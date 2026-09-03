@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GridGuardian Command</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* GridGuardian — deliberate single dark "operations center" theme.
+     Chart palette validated (CVD + contrast) against surface #131a24. */
+  :root{
+    --ground:#0c1118; --surface:#131a24; --surface-2:#182230; --surface-3:#1f2b3c;
+    --ink:#eef3f8; --ink-2:#9aa7b5; --ink-3:#64748b;
+    --line:#243244; --grid:#1c2735; --axis:#324258;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --accent:#4fd8eb;
+    --disp:"Barlow Condensed","Arial Narrow",sans-serif;
+    --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --mono:"IBM Plex Mono","Consolas",monospace;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  svg text{font-family:var(--body)}
+
+  .app{max-width:1440px;margin:0 auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:12px}
+
+  /* ── top bar ─────────────────────────────── */
+  header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:4px 2px}
+  .mark{display:flex;align-items:center;gap:10px}
+  .mark svg{flex:none}
+  .mark h1{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:.06em;margin:0;text-transform:uppercase}
+  .mark h1 em{font-style:normal;color:var(--accent)}
+  .mark .sub{font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+  .util-chip{margin-left:auto;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);
+    border:1px solid var(--line);border-radius:6px;padding:6px 12px;background:var(--surface)}
+  .util-chip b{color:var(--ink);font-weight:500}
+  .clock{font-family:var(--mono);font-size:12px;color:var(--accent)}
+
+  /* ── scenario rail ───────────────────────── */
+  .rail{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .rail .lbl{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding:0 6px}
+  .scen{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:7px;border:1px solid var(--line);
+    background:var(--surface-2);color:var(--ink-2);font-weight:500;font-size:13px}
+  .scen svg{flex:none}
+  .scen:hover{background:var(--surface-3);color:var(--ink)}
+  .scen.on{background:#12314f;border-color:#2a5b8f;color:var(--ink)}
+  .scen:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .rail .spacer{flex:1}
+  .tool{padding:7px 14px;border-radius:7px;border:1px solid var(--line);font-weight:500;font-size:13px;color:var(--ink-2);background:var(--surface-2)}
+  .tool:hover{color:var(--ink);background:var(--surface-3)}
+  .tool.on{border-color:var(--accent);color:var(--accent)}
+  .tool.round{border-color:#7a4a1f;background:#2a1c0e;color:#f2b878}
+  .tool.round:hover{background:#3a2712;color:#ffd39a}
+
+  /* ── main grid ───────────────────────────── */
+  .main{display:grid;grid-template-columns:minmax(430px,7fr) minmax(380px,5fr);gap:12px;align-items:stretch}
+  @media(max-width:980px){.main{grid-template-columns:1fr}}
+  .panel{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .panel h2{font-family:var(--disp);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  .panel h2 .hint{margin-left:auto;font-family:var(--body);font-size:11px;letter-spacing:0;text-transform:none;color:var(--ink-3)}
+
+  /* map */
+  #mapWrap{display:flex;flex-direction:column;gap:8px;height:100%}
+  #map{width:100%;height:auto;display:block;background:linear-gradient(115deg,#101823 55%,#0d1d2b 78%,#0b2233 100%);border-radius:8px;border:1px solid var(--grid)}
+  .map-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);padding:0 2px}
+  .map-legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;border:2px solid var(--surface)}
+  .node{cursor:pointer}
+  .node circle.core{stroke:var(--surface);stroke-width:2}
+  .node.sel circle.core{stroke:var(--accent);stroke-width:2.5}
+  .node text{fill:var(--ink-2);font-size:10.5px;pointer-events:none}
+  .node.sel text{fill:var(--ink)}
+  .pulse{animation:pulse 1.6s ease-out infinite;transform-origin:center;transform-box:fill-box}
+  @keyframes pulse{0%{opacity:.85;transform:scale(.6)}100%{opacity:0;transform:scale(2.1)}}
+  @media(prefers-reduced-motion:reduce){.pulse{animation:none;opacity:.35}.storm-spin{animation:none!important}}
+  .storm-spin{animation:spin 5s linear infinite;transform-origin:center;transform-box:fill-box}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* right column */
+  .col{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px 12px}
+  .kpi .k-lbl{font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  .kpi .k-val{font-size:30px;font-weight:600;letter-spacing:-.01em;margin-top:2px}
+  .kpi .k-val small{font-size:15px;color:var(--ink-2);font-weight:400;margin-left:2px}
+  .kpi .k-note{font-size:11.5px;color:var(--ink-2);margin-top:2px;display:flex;align-items:center;gap:6px}
+  .k-flag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px}
+  .k-flag.ok{color:#7ce07c;background:rgba(12,163,12,.12)}
+  .k-flag.warn{color:var(--warn);background:rgba(250,178,25,.12)}
+  .k-flag.crit{color:#ff8a8a;background:rgba(208,59,59,.16)}
+
+  .chart-svg{width:100%;height:auto;display:block}
+  .tt{position:fixed;z-index:50;pointer-events:none;background:#0a0f16;border:1px solid var(--axis);border-radius:7px;
+    padding:7px 10px;font-size:12px;color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.5);display:none;min-width:150px}
+  .tt .tt-h{font-family:var(--mono);font-size:11px;color:var(--ink-2);margin-bottom:4px}
+  .tt .row{display:flex;justify-content:space-between;gap:14px}
+  .tt .row b{font-weight:500;font-variant-numeric:tabular-nums}
+  .tt .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);margin-top:4px;padding-left:2px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+
+  /* ticker */
+  .ticker{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-family:var(--mono);font-size:12px;
+    display:flex;gap:10px;align-items:baseline;overflow:hidden;white-space:nowrap}
+  .ticker .t-lbl{color:var(--ink-3);letter-spacing:.1em;flex:none}
+  #tickerFeed{overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
+  #tickerFeed b{color:var(--warn);font-weight:500}
+
+  /* strategy lens */
+  .lens-chip{position:absolute;z-index:20;max-width:240px;background:#0d2027;border:1px solid #1f6b7a;border-left:3px solid var(--accent);
+    border-radius:8px;padding:8px 11px;font-size:12px;color:#cfeef5;box-shadow:0 8px 24px rgba(0,0,0,.55);display:none}
+  .lens-chip .lc-h{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+  body.lens .lens-chip{display:block}
+
+  /* decision round drawer */
+  .drawer{position:fixed;inset:0;z-index:100;display:none}
+  .drawer.open{display:block}
+  .drawer .scrim{position:absolute;inset:0;background:rgba(4,7,11,.66)}
+  .drawer .sheet{position:absolute;top:0;right:0;bottom:0;width:min(480px,94vw);background:var(--surface-2);border-left:1px solid var(--axis);
+    padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+  .sheet h2{font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:0}
+  .sheet h2 em{font-style:normal;color:#f2b878}
+  .sheet .close{position:absolute;top:12px;right:14px;color:var(--ink-3);font-size:20px;padding:4px 8px}
+  .sheet .close:hover{color:var(--ink)}
+  .sheet p.intro{margin:0;color:var(--ink-2);font-size:13px}
+  .budget{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12.5px}
+  .budget .bar{flex:1;height:8px;background:var(--surface);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+  .budget .fill{height:100%;background:var(--series-4);border-radius:99px;transition:width .25s}
+  .budget.over .fill{background:var(--critical)}
+  .inv{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:pointer}
+  .inv:hover{border-color:var(--axis)}
+  .inv.on{border-color:#b97f2e;background:#20180c}
+  .inv input{margin-top:3px;accent-color:var(--series-4)}
+  .inv .i-name{font-weight:600;font-size:13.5px;display:flex;justify-content:space-between;gap:10px}
+  .inv .i-cost{font-family:var(--mono);color:var(--series-4);font-weight:500;flex:none}
+  .inv .i-desc{font-size:12px;color:var(--ink-2);margin-top:2px}
+  .team-row{display:flex;gap:8px}
+  .team-row input{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:7px;color:var(--ink);padding:8px 12px;font:inherit}
+  .runbtn{background:#7a2c14;border:1px solid #b0451f;color:#ffd9c4;font-weight:600;border-radius:8px;padding:10px 16px;letter-spacing:.03em}
+  .runbtn:hover{background:#933417}
+  .runbtn:disabled{opacity:.45;cursor:not-allowed}
+  .result{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 14px;display:none}
+  .result.show{display:block}
+  .result .score{font-size:34px;font-weight:600;color:var(--accent)}
+  .result .score small{font-size:13px;color:var(--ink-2);font-weight:400}
+  .result table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  .result td{padding:4px 0;border-top:1px solid var(--grid);color:var(--ink-2)}
+  .result td:last-child{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px}
+  .board{border-top:1px solid var(--axis);padding-top:10px}
+  .board h3{font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+  .board ol{margin:0;padding-left:22px;font-size:13px}
+  .board li{padding:3px 0;color:var(--ink-2)}
+  .board li b{color:var(--ink);font-weight:600}
+  .board li .pts{font-family:var(--mono);color:var(--accent)}
+  .board .empty{color:var(--ink-3);font-size:12.5px}
+  footer{color:var(--ink-3);font-size:11.5px;text-align:center;padding-top:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="mark">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="31" height="31" rx="7" fill="#12314f" stroke="#2a5b8f"/>
+        <path d="M19 6 L11 19 h5 l-2 9 9-14 h-5 z" fill="#4fd8eb"/>
+      </svg>
+      <div>
+        <h1>Grid<em>Guardian</em></h1>
+        <div class="sub">N-1 contingency &amp; DER hosting-capacity operations</div>
+      </div>
+    </div>
+    <div class="util-chip"><b>SE-COAST DEMO CO-OP</b> · 12 feeders · 69.3k meters <span class="clock" id="clock">--:--:--</span></div>
+  </header>
+
+  <div class="rail" id="rail">
+    <span class="lbl">Scenario</span>
+    <button class="scen on" data-scen="bluesky">☀ Blue Sky</button>
+    <button class="scen" data-scen="heatwave">🌡 Heat Wave 98°F</button>
+    <button class="scen" data-scen="hurricane">🌀 Hurricane Landfall</button>
+    <button class="scen" data-scen="highder">☍ High DER Export</button>
+    <span class="spacer"></span>
+    <button class="tool" id="lensBtn" aria-pressed="false">◎ Strategy Lens</button>
+    <button class="tool round" id="roundBtn">▶ Decision Round</button>
+  </div>
+
+  <div class="main">
+    <div class="panel" id="mapPanel">
+      <h2>Service territory · one-line view <span class="hint" id="scenHint">System normal — all ties available</span></h2>
+      <div id="mapWrap">
+        <svg id="map" viewBox="0 0 660 470" role="img" aria-label="Feeder network map"></svg>
+        <div class="map-legend">
+          <span><i class="dot" style="background:var(--good)"></i> N-1 secure</span>
+          <span><i class="dot" style="background:var(--warn)"></i> ⚠ watch (&lt;8% margin)</span>
+          <span><i class="dot" style="background:var(--critical)"></i> ✖ contingency violation</span>
+          <span><i class="dot" style="background:var(--ink-3)"></i> ⏻ de-energized</span>
+          <span style="margin-left:auto;color:var(--ink-3)">click a feeder to inspect</span>
+        </div>
+      </div>
+      <div class="lens-chip" style="top:40px;left:18px"><div class="lc-h">Where to play</div>Hurricane-exposed Southeast co-ops &amp; munis, 15–200k meters — underserved by transmission-grade EMS vendors.</div>
+    </div>
+
+    <div class="col">
+      <div class="kpis" id="kpis" style="position:relative">
+        <div class="lens-chip" style="top:-14px;right:-6px"><div class="lc-h">How to win</div>Minutes-to-decision, not months-to-study: planning-grade N-1 and hosting capacity, continuously refreshed.</div>
+      </div>
+      <div class="panel" style="position:relative">
+        <h2 id="loadTitle">Feeder loading · 24 h</h2>
+        <svg class="chart-svg" id="loadChart" viewBox="0 0 520 210"></svg>
+        <div class="legend">
+          <span><i style="background:var(--series-1)"></i> native load</span>
+          <span><i style="background:var(--series-2)"></i> N-1 contingency load</span>
+          <span><i style="background:var(--ink-3);height:2px"></i> normal rating</span>
+          <span><i style="background:var(--critical);height:2px"></i> emergency rating</span>
+        </div>
+        <div class="lens-chip" style="bottom:-10px;left:14px"><div class="lc-h">Must-have capabilities</div>Feeder-level power-flow engine fed by the utility's own GIS + AMI — no parallel model to maintain.</div>
+      </div>
+      <div class="panel">
+        <h2>DER hosting-capacity utilization <span class="hint">installed DER vs. HC limit</span></h2>
+        <svg class="chart-svg" id="hcChart" viewBox="0 0 520 240"></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticker" style="position:relative">
+    <span class="t-lbl">EVENT FEED ▸</span><span id="tickerFeed"></span>
+    <div class="lens-chip" style="top:-58px;left:120px"><div class="lc-h">Management systems</div>Event-driven telemetry + adoption metrics close the loop: every operator decision becomes training signal for the roadmap.</div>
+  </div>
+
+  <footer>GridGuardian workshop demo · fictional utility &amp; synthetic data · Playing-to-Win product strategy session</footer>
+</div>
+
+<div class="tt" id="tt"></div>
+
+<!-- decision round drawer -->
+<div class="drawer" id="drawer">
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet">
+    <button class="close" id="closeBtn" aria-label="Close">✕</button>
+    <h2>Decision <em>Round</em></h2>
+    <p class="intro">Your team owns a <b>$10M</b> resilience budget. The hurricane makes landfall either way. Choose your portfolio, then run the storm — score = customer-minutes of interruption avoided + N-1 posture gained.</p>
+    <div class="budget" id="budget"><span>SPEND</span><div class="bar"><div class="fill" id="budgetFill" style="width:0%"></div></div><span id="budgetLbl">$0M / $10M</span></div>
+    <div id="invList"></div>
+    <div class="team-row">
+      <input id="teamName" placeholder="Team name (e.g., SE-Transmission PDMs)" maxlength="28">
+      <button class="runbtn" id="runBtn">Run the storm</button>
+    </div>
+    <div class="result" id="result"></div>
+    <div class="board">
+      <h3>Leaderboard</h3>
+      <ol id="board"></ol>
+      <div class="empty" id="boardEmpty">No runs yet — first team on the board sets the bar.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ───────────────────────── data model (synthetic) ───────────────────────── */
+const FEEDERS=[
+ {id:1, name:"Palmetto",  kv:25,    norm:21,  em:25,   peak:16,  der:3,   hc:8,   cust:8200, coastal:true,  x:472,y:118},
+ {id:2, name:"Live Oak",  kv:25,    norm:20,  em:24,   peak:14,  der:2,   hc:7,   cust:7400, coastal:false, x:352,y:96},
+ {id:3, name:"Sea Island",kv:12.47, norm:10,  em:12,   peak:8.5, der:4.4, hc:5,   cust:4100, coastal:true,  x:540,y:196},
+ {id:4, name:"Marsh Creek",kv:12.47,norm:11,  em:13,   peak:7.5, der:1.5, hc:6,   cust:3800, coastal:false, x:420,y:206},
+ {id:5, name:"Tidewater", kv:25,    norm:22,  em:26,   peak:17,  der:2.5, hc:9,   cust:9100, coastal:true,  x:492,y:300},
+ {id:6, name:"Cypress",   kv:25,    norm:19,  em:23,   peak:13,  der:5,   hc:7.5, cust:6800, coastal:false, x:352,y:288},
+ {id:7, name:"Indigo",    kv:12.47, norm:9,   em:11,   peak:7.8, der:3.5, hc:4.5, cust:3500, coastal:true,  x:428,y:392},
+ {id:8, name:"Longleaf",  kv:12.47, norm:10,  em:12,   peak:6.9, der:2,   hc:5.5, cust:3900, coastal:false, x:300,y:398},
+ {id:9, name:"Pelican",   kv:25,    norm:21,  em:25,   peak:15.5,der:6,   hc:8.5, cust:8600, coastal:true,  x:236,y:186},
+ {id:10,name:"Saltgrass", kv:25,    norm:20,  em:24,   peak:12.8,der:4.5, hc:7,   cust:6200, coastal:false, x:132,y:132},
+ {id:11,name:"Magnolia",  kv:12.47, norm:11,  em:13,   peak:8.2, der:2.8, hc:6,   cust:4400, coastal:false, x:120,y:300},
+ {id:12,name:"Barrier",   kv:12.47, norm:9.5, em:11.5, peak:7.1, der:3.6, hc:4,   cust:3300, coastal:true,  x:214,y:388},
+];
+const TIES=[[1,2],[3,4],[5,6],[7,8],[9,10],[11,12]];
+const partner=id=>{const t=TIES.find(t=>t.includes(id));return t[0]===id?t[1]:t[0];};
+const LOAD24=[.55,.50,.47,.45,.45,.48,.56,.66,.74,.80,.85,.90,.93,.96,.98,1,.99,.97,.95,.90,.84,.76,.68,.60];
+const PV24  =[0,0,0,0,0,0,.05,.20,.45,.65,.82,.93,1,.98,.90,.75,.55,.30,.10,0,0,0,0,0];
+const SCEN={
+ bluesky:  {label:"Blue Sky",          loadM:.78, derM:.70, hcM:1,   outages:[],     hint:"System normal — all ties available"},
+ heatwave: {label:"Heat Wave 98°F",    loadM:.96, derM:.55, hcM:1,   outages:[],     hint:"AC-driven peak · PV thermally derated · margins compressing"},
+ hurricane:{label:"Hurricane Landfall",loadM:.90, derM:0,   hcM:1,   outages:[3,7],  hint:"Cat-2 landfall 15:00 at pre-storm peak · 2 coastal feeders lost · DER offline"},
+ highder:  {label:"High DER Export",   loadM:.50, derM:1.15,hcM:1.25,outages:[],     hint:"Spring Sunday minimum load · max PV + queued projects energized"},
+};
+const INVEST=[
+ {key:"recon",cost:6,name:"Reconductor coastal tie corridor",desc:"+18% emergency ratings across the coastal tie network. Slow, permanent, boring — and it works."},
+ {key:"bess", cost:8,name:"2 × 5 MW / 4 h BESS",desc:"Shaves 4.5 MW off the two heaviest feeders during the event window; +10 MW hosting headroom on blue-sky days."},
+ {key:"flisr",cost:4,name:"FLISR sectionalizing automation",desc:"Faulted sections isolate in ~60 s; restoration 1 h instead of 4 h for customers behind the fault."},
+ {key:"vvo",  cost:2,name:"Smart-inverter Volt-VAR rollout",desc:"+15% hosting capacity on every feeder via coordinated reactive support. Cheapest MW you'll ever buy."},
+];
+
+/* ───────────────────────── engine ───────────────────────── */
+function evaluate(scenKey,inv){
+  inv=inv||{}; const S=SCEN[scenKey];
+  const fs=FEEDERS.map(f=>{
+    let em=f.em, hc=f.hc;
+    // recon covers the coastal tie corridor: coastal feeders AND their inland tie partners
+    const tieP=FEEDERS.find(x=>x.id===partner(f.id));
+    if(inv.recon&&(f.coastal||tieP.coastal)) em*=1.18;
+    if(inv.vvo) hc*=1.15;
+    return {...f,emEff:em,hcEff:hc};
+  });
+  // BESS targets the two feeders with highest scenario peak
+  let bessSet=new Set();
+  if(inv.bess){
+    // in a storm the batteries back up the tie-pickup feeders; blue-sky they shave the two heaviest
+    bessSet=S.outages.length
+      ? new Set(S.outages.map(id=>partner(id)))
+      : new Set([...fs].sort((a,b)=>b.peak-a.peak).slice(0,2).map(f=>f.id));
+  }
+  const out=new Set(S.outages);
+  fs.forEach(f=>{
+    f.out=out.has(f.id);
+    f.load24=LOAD24.map((v,h)=>{
+      if(f.out&&h>=15) return 0;
+      let mw=f.peak*v*S.loadM - f.der*S.derM*PV24[h];
+      if(bessSet.has(f.id)&&h>=12&&h<=20) mw-=4.5;
+      const p=fs.find(x=>x.id===partner(f.id));
+      if(p&&out.has(p.id)&&h>=15) mw+=0.95*(p.peak*LOAD24[h]*S.loadM); // real pickup after landfall
+      return Math.max(mw,-f.hcEff*1.4);
+    });
+    f.peakNative=Math.max(...f.load24);
+  });
+  // second pass — needs every feeder's load24 in place before tie pickups are computed
+  fs.forEach(f=>{
+    // N-1: worst-hour pickup of 65% of partner load (unless partner already out)
+    const p=fs.find(x=>x.id===partner(f.id));
+    f.cont24=f.load24.map((v,h)=>{
+      if(f.out) return 0;
+      const add=(p&&!out.has(p.id))?0.65*p.load24[h]:0;
+      return v+Math.max(add,0);
+    });
+    f.peakCont=Math.max(...f.cont24);
+    f.margin=f.out?0:(f.emEff-f.peakCont)/f.emEff;
+    f.hcUse=(f.der*S.hcM)/f.hcEff; // installed (plus queued, in high-DER) vs HC limit
+    f.revFlow=Math.min(...f.load24)<0;
+    f.status=f.out?"out":(f.margin<0?"viol":(f.margin<.08?"watch":"ok"));
+    if(scenKey==="highder"&&f.hcUse>1) f.status="viol";
+    else if(scenKey==="highder"&&f.hcUse>.85&&f.status==="ok") f.status="watch";
+  });
+  const act=fs.filter(f=>!f.out);
+  const kpi={
+    secure:act.filter(f=>f.status==="ok").length, active:act.length, total:fs.length,
+    viol:fs.filter(f=>f.status==="viol").length,
+    custRisk:fs.filter(f=>f.status==="viol").reduce((s,f)=>s+f.cust,0)
+            +fs.filter(f=>f.out).reduce((s,f)=>s+f.cust,0),
+    headroom:fs.reduce((s,f)=>s+Math.max(f.hcEff-f.der,0),0),
+    worst:Math.max(...act.map(f=>f.peakCont/f.emEff))*100,
+  };
+  // CMI (customer-minutes interrupted) for the storm scoring
+  const restoreMin=inv.flisr?60:240;
+  kpi.cmi=fs.filter(f=>f.out).reduce((s,f)=>s+f.cust*restoreMin,0)
+        + fs.filter(f=>f.status==="viol").reduce((s,f)=>s+f.cust*90,0); // shed exposure
+  return {fs,kpi,S};
+}
+
+/* ───────────────────────── state ───────────────────────── */
+let scenKey="bluesky", selId=5, model=evaluate(scenKey);
+const $=id=>document.getElementById(id);
+const fmt=n=>n.toLocaleString("en-US");
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+const STATC={ok:"var(--good)",watch:"var(--warn)",viol:"var(--critical)",out:"var(--ink-3)"};
+
+/* ───────────────────────── map ───────────────────────── */
+function renderMap(){
+  const svg=$("map"); svg.innerHTML="";
+  // coastline + ocean
+  el("path",{d:"M598 -10 C560 90, 606 180, 566 262 C534 330, 588 400, 556 480 L700 480 L700 -10 Z",fill:"#0e2c42",opacity:".55"},svg);
+  el("path",{d:"M598 -10 C560 90, 606 180, 566 262 C534 330, 588 400, 556 480",stroke:"#2a5b8f",fill:"none","stroke-width":"1.5","stroke-dasharray":"1 4"},svg);
+  el("text",{x:636,y:250,fill:"#2f6491","font-size":"11","text-anchor":"middle",transform:"rotate(90 636 250)","letter-spacing":"4"},svg).textContent="ATLANTIC";
+  // hurricane marker
+  if(scenKey==="hurricane"){
+    const g=el("g",{},svg);
+    el("circle",{cx:590,cy:330,r:34,fill:"none",stroke:"var(--critical)","stroke-width":"1","stroke-dasharray":"3 5",class:"storm-spin"},g);
+    el("text",{x:590,y:338,"font-size":"26","text-anchor":"middle"},g).textContent="🌀";
+    el("path",{d:"M660 430 Q612 380 590 330 Q568 276 540 196",stroke:"var(--serious)",fill:"none","stroke-width":"1.5","stroke-dasharray":"6 5",opacity:".7"},g);
+    el("text",{x:594,y:296,fill:"var(--serious)","font-size":"10","text-anchor":"middle"},g).textContent="track · Cat-2";
+  }
+  // substations (sources)
+  [[300,40,"HARBORVIEW 115/25kV"],[80,220,"PINELAND 115/25kV"]].forEach(([x,y,n])=>{
+    el("rect",{x:x-9,y:y-9,width:18,height:18,fill:"var(--surface-3)",stroke:"var(--axis)","stroke-width":"1.5"},svg);
+    el("rect",{x:x-4,y:y-4,width:8,height:8,fill:"var(--accent)"},svg);
+    el("text",{x:x,y:y-16,"text-anchor":"middle",fill:"var(--ink-3)","font-size":"9.5","letter-spacing":"1"},svg).textContent=n;
+  });
+  // backbone from subs
+  const back=[[300,40,2],[300,40,1],[300,40,4],[80,220,10],[80,220,9],[80,220,11],[300,40,6],[80,220,8]];
+  back.forEach(([x,y,id])=>{const f=model.fs.find(f=>f.id===id);
+    el("line",{x1:x,y1:y,x2:f.x,y2:f.y,stroke:"var(--axis)","stroke-width":"1.2",opacity:".6"},svg);});
+  // ties
+  TIES.forEach(([a,b])=>{
+    const A=model.fs.find(f=>f.id===a),B=model.fs.find(f=>f.id===b);
+    const hot=(A.out||B.out);
+    el("line",{x1:A.x,y1:A.y,x2:B.x,y2:B.y,stroke:hot?"var(--serious)":"#2c3c52","stroke-width":hot?"2.4":"1.6","stroke-dasharray":hot?"none":"7 5"},svg);
+    if(hot) el("text",{x:(A.x+B.x)/2,y:(A.y+B.y)/2-7,fill:"var(--serious)","font-size":"9.5","text-anchor":"middle"},svg).textContent="TIE CLOSED ▸ pickup";
+  });
+  // feeder nodes
+  model.fs.forEach(f=>{
+    const g=el("g",{class:"node"+(f.id===selId?" sel":""),tabindex:"0",role:"button","aria-label":f.name},svg);
+    if(f.status==="viol") el("circle",{cx:f.x,cy:f.y,r:11,fill:"var(--critical)",class:"pulse"},g);
+    el("circle",{cx:f.x,cy:f.y,r:f.kv===25?9:7,fill:STATC[f.status],class:"core"},g);
+    const glyph=f.status==="viol"?"✖":f.status==="watch"?"⚠":f.status==="out"?"⏻":"";
+    if(glyph) el("text",{x:f.x,y:f.y-13,"text-anchor":"middle","font-size":"11",fill:STATC[f.status]},g).textContent=glyph;
+    el("text",{x:f.x,y:f.y+22,"text-anchor":"middle"},g).textContent=f.name;
+    const pct=f.out?"OFFLINE":Math.round(f.peakCont/f.emEff*100)+"%";
+    el("text",{x:f.x,y:f.y+34,"text-anchor":"middle","font-size":"9.5",fill:"var(--ink-3)","font-family":"var(--mono)"},g).textContent=pct;
+    g.addEventListener("click",()=>{selId=f.id;renderAll();});
+    g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();selId=f.id;renderAll();}});
+    g.addEventListener("mousemove",e=>tooltip(e,`<div class="tt-h">${f.name} · ${f.kv} kV · ${fmt(f.cust)} meters</div>
+      <div class="row"><span>N-1 peak</span><b>${f.out?"—":f.peakCont.toFixed(1)+" MW"}</b></div>
+      <div class="row"><span>Emergency rating</span><b>${f.emEff.toFixed(1)} MW</b></div>
+      <div class="row"><span>Margin</span><b>${f.out?"—":(f.margin*100).toFixed(0)+"%"}</b></div>`));
+    g.addEventListener("mouseleave",hideTT);
+  });
+}
+
+/* ───────────────────────── KPIs ───────────────────────── */
+function renderKPIs(){
+  const k=model.kpi,box=$("kpis");
+  box.querySelectorAll(".kpi").forEach(e=>e.remove());
+  const mk=(lbl,val,unit,note,cls,icon)=>{
+    const d=document.createElement("div");d.className="kpi";
+    d.innerHTML=`<div class="k-lbl">${lbl}</div><div class="k-val">${val}<small>${unit}</small></div>
+      <div class="k-note"><span class="k-flag ${cls}">${icon}</span>${note}</div>`;
+    box.insertBefore(d,box.querySelector(".lens-chip"));
+  };
+  const secCls=k.secure===k.active?"ok":(k.viol?"crit":"warn");
+  mk("N-1 secure feeders",`${k.secure}<small>/${k.active}</small>`,"",
+     k.viol?`${k.viol} feeder${k.viol>1?"s":""} in violation`:"single-contingency compliant",
+     secCls,secCls==="ok"?"✔ PASS":secCls==="crit"?"✖ FAIL":"⚠ WATCH");
+  mk("Customers at risk",fmt(k.custRisk),"", k.custRisk?"on violated / de-energized feeders":"no exposure this hour",
+     k.custRisk>10000?"crit":k.custRisk?"warn":"ok",k.custRisk>10000?"✖ HIGH":k.custRisk?"⚠ ELEV":"✔ NONE");
+  mk("Worst N-1 loading",k.worst.toFixed(0),"%","of emergency rating",
+     k.worst>100?"crit":k.worst>92?"warn":"ok",k.worst>100?"✖ OVER":k.worst>92?"⚠ NEAR":"✔ OK");
+  mk("DER hosting headroom",k.headroom.toFixed(0),"MW","remaining interconnection room",
+     k.headroom<15?"warn":"ok",k.headroom<15?"⚠ TIGHT":"✔ OPEN");
+}
+
+/* ───────────────────────── load chart ───────────────────────── */
+function renderLoadChart(){
+  const f=model.fs.find(x=>x.id===selId);
+  $("loadTitle").innerHTML=`${f.name} feeder · 24 h loading <span class="hint">${f.kv} kV · emergency ${f.emEff.toFixed(1)} MW</span>`;
+  const svg=$("loadChart");svg.innerHTML="";
+  const W=520,H=210,L=40,R=14,T=16,B=26,pw=W-L-R,ph=H-T-B;
+  const ymax=Math.max(f.emEff*1.12,f.peakCont*1.08,4);
+  const ymin=Math.min(0,Math.min(...f.load24)*1.15);
+  const yy=v=>T+ph-(v-ymin)/(ymax-ymin)*ph, xx=h=>L+h/23*pw;
+  for(let v=0;v<=ymax;v+=Math.ceil(ymax/5)){
+    el("line",{x1:L,x2:W-R,y1:yy(v),y2:yy(v),stroke:"var(--grid)"},svg);
+    el("text",{x:L-6,y:yy(v)+3,"text-anchor":"end","font-size":"9.5",fill:"var(--ink-3)","font-family":"var(--mono)"},svg).textContent=v;
+  }
+  [0,6,12,18,23].forEach(h=>el("text",{x:xx(h),y:H-8,"text-anchor":"middle","font-size":"9.5",fill:"var(--ink-3)","font-family":"var(--mono)"},svg).textContent=String(h).padStart(2,"0")+":00");
+  if(ymin<0) el("line",{x1:L,x2:W-R,y1:yy(0),y2:yy(0),stroke:"var(--axis)","stroke-width":"1"},svg);
+  // ratings
+  el("line",{x1:L,x2:W-R,y1:yy(f.norm),y2:yy(f.norm),stroke:"var(--ink-3)","stroke-width":"1.5","stroke-dasharray":"5 4"},svg);
+  el("line",{x1:L,x2:W-R,y1:yy(f.emEff),y2:yy(f.emEff),stroke:"var(--critical)","stroke-width":"1.5","stroke-dasharray":"5 4"},svg);
+  el("text",{x:W-R,y:yy(f.emEff)-4,"text-anchor":"end","font-size":"9",fill:"var(--critical)"},svg).textContent="EMERGENCY";
+  // violation shading where contingency exceeds emergency
+  f.cont24.forEach((v,h)=>{if(v>f.emEff&&h<23){
+    el("rect",{x:xx(h),y:T,width:xx(h+1)-xx(h),height:ph,fill:"var(--critical)",opacity:".08"},svg);}});
+  const path=(arr)=>arr.map((v,h)=>(h?"L":"M")+xx(h).toFixed(1)+" "+yy(v).toFixed(1)).join(" ");
+  el("path",{d:path(f.load24)+` L ${xx(23)} ${yy(Math.max(ymin,0))} L ${xx(0)} ${yy(Math.max(ymin,0))} Z`,fill:"var(--series-1)",opacity:".10"},svg);
+  el("path",{d:path(f.cont24),stroke:"var(--series-2)",fill:"none","stroke-width":"2","stroke-dasharray":"6 4"},svg);
+  el("path",{d:path(f.load24),stroke:"var(--series-1)",fill:"none","stroke-width":"2"},svg);
+  // endpoint emphasis + direct labels
+  el("circle",{cx:xx(23),cy:yy(f.load24[23]),r:3.5,fill:"var(--series-1)",stroke:"var(--surface)","stroke-width":"2"},svg);
+  // hover layer
+  const cross=el("g",{style:"display:none"},svg);
+  const cl=el("line",{y1:T,y2:T+ph,stroke:"var(--axis)","stroke-width":"1"},cross);
+  const c1=el("circle",{r:4,fill:"var(--series-1)",stroke:"var(--surface)","stroke-width":"2"},cross);
+  const c2=el("circle",{r:4,fill:"var(--series-2)",stroke:"var(--surface)","stroke-width":"2"},cross);
+  const hit=el("rect",{x:L,y:T,width:pw,height:ph,fill:"transparent"},svg);
+  hit.addEventListener("mousemove",e=>{
+    const r=svg.getBoundingClientRect(),h=Math.max(0,Math.min(23,Math.round((e.clientX-r.left)*(W/r.width)-L)/ (pw/23)))|0;
+    cross.style.display="";cl.setAttribute("x1",xx(h));cl.setAttribute("x2",xx(h));
+    c1.setAttribute("cx",xx(h));c1.setAttribute("cy",yy(f.load24[h]));
+    c2.setAttribute("cx",xx(h));c2.setAttribute("cy",yy(f.cont24[h]));
+    const over=f.cont24[h]>f.emEff;
+    tooltip(e,`<div class="tt-h">${String(h).padStart(2,"0")}:00 · ${f.name}</div>
+      <div class="row"><span><i class="sw" style="background:var(--series-1)"></i>native</span><b>${f.load24[h].toFixed(1)} MW</b></div>
+      <div class="row"><span><i class="sw" style="background:var(--series-2)"></i>N-1</span><b>${f.cont24[h].toFixed(1)} MW</b></div>
+      <div class="row"><span>vs emergency</span><b style="color:${over?"var(--critical)":"var(--ink)"}">${(f.cont24[h]/f.emEff*100).toFixed(0)}%${over?" ✖":""}</b></div>`);
+  });
+  hit.addEventListener("mouseleave",()=>{cross.style.display="none";hideTT();});
+}
+
+/* ───────────────────────── hosting-capacity chart ───────────────────────── */
+function renderHC(){
+  const svg=$("hcChart");svg.innerHTML="";
+  const fs=[...model.fs].sort((a,b)=>b.hcUse-a.hcUse);
+  const W=520,L=86,R=52,rh=17,gap=2.5,T=14;
+  fs.forEach((f,i)=>{
+    const y=T+i*(rh+gap),bw=(W-L-R),use=Math.min(f.hcUse,1.35);
+    el("text",{x:L-8,y:y+rh-5,"text-anchor":"end","font-size":"10.5",fill:f.id===selId?"var(--ink)":"var(--ink-2)"},svg).textContent=f.name;
+    el("rect",{x:L,y:y,width:bw,height:rh,fill:"var(--surface-2)",rx:3},svg);
+    const cap=bw/1.35; // x-scale where 100% sits
+    el("rect",{x:L,y:y,width:Math.max(use*cap,2),height:rh,rx:3,
+      fill:f.hcUse>1?"var(--critical)":f.hcUse>.85?"var(--warn)":"var(--series-1)"},svg);
+    el("line",{x1:L+cap,x2:L+cap,y1:y-1,y2:y+rh+1,stroke:"var(--ink)","stroke-width":"1.5","stroke-dasharray":"2 2",opacity:".6"},svg);
+    const lbl=(f.hcUse*100).toFixed(0)+"%"+(f.hcUse>1?" ✖":f.hcUse>.85?" ⚠":"");
+    el("text",{x:W-R+6,y:y+rh-5,"font-size":"10",fill:f.hcUse>1?"var(--critical)":f.hcUse>.85?"var(--warn)":"var(--ink-3)","font-family":"var(--mono)"},svg).textContent=lbl;
+    const hit=el("rect",{x:0,y:y-1,width:W,height:rh+2,fill:"transparent"},svg);
+    hit.addEventListener("mousemove",e=>tooltip(e,`<div class="tt-h">${f.name} · hosting capacity</div>
+      <div class="row"><span>Installed DER</span><b>${f.der.toFixed(1)} MW</b></div>
+      <div class="row"><span>HC limit</span><b>${f.hcEff.toFixed(1)} MW</b></div>
+      <div class="row"><span>Utilization</span><b>${(f.hcUse*100).toFixed(0)}%</b></div>
+      <div class="row"><span>Queue can absorb</span><b>${Math.max(f.hcEff-f.der,0).toFixed(1)} MW</b></div>`));
+    hit.addEventListener("mouseleave",hideTT);
+  });
+  el("text",{x:L+(W-L-R)/1.35,y:T+fs.length*(rh+gap)+8,"text-anchor":"middle","font-size":"9",fill:"var(--ink-3)"},svg).textContent="100% = HC limit";
+  svg.setAttribute("viewBox",`0 0 ${W} ${T+fs.length*(rh+gap)+14}`);
+}
+
+/* ───────────────────────── ticker ───────────────────────── */
+function renderTicker(){
+  const k=model.kpi,S=model.S,msgs=[];
+  if(scenKey==="hurricane"){msgs.push("15:02 <b>LOCKOUT</b> Sea Island CB-3 · storm damage, 3 spans down");
+    msgs.push("15:04 <b>LOCKOUT</b> Indigo CB-7 · vegetation contact");
+    msgs.push("15:05 tie SW-34 CLOSED · Marsh Creek picking up 4.1 MW");
+    msgs.push("15:05 tie SW-71 CLOSED · Longleaf picking up 3.6 MW");}
+  if(scenKey==="heatwave"){msgs.push("14:40 system peak trending +6% vs forecast · demand response armed");}
+  if(scenKey==="highder"){msgs.push("13:10 reverse power at Pelican recloser R-2 · 2.4 MW toward substation");
+    msgs.push("13:15 voltage 1.052 pu at Barrier EOL · smart-inverter curtailment engaged");}
+  msgs.push(k.viol?`<b>${k.viol} N-1 violation${k.viol>1?"s":""}</b> · ${fmt(k.custRisk)} meters exposed`:"N-1 screening clean across all active ties");
+  msgs.push(`hosting headroom ${k.headroom.toFixed(0)} MW · interconnection queue 14 applications pending`);
+  $("tickerFeed").innerHTML=msgs.join("  ·  ");
+  $("scenHint").textContent=S.hint;
+}
+
+/* ───────────────────────── tooltip ───────────────────────── */
+function tooltip(e,html){const t=$("tt");t.innerHTML=html;t.style.display="block";
+  const x=Math.min(e.clientX+14,window.innerWidth-190),y=Math.min(e.clientY+14,window.innerHeight-110);
+  t.style.left=x+"px";t.style.top=y+"px";}
+function hideTT(){$("tt").style.display="none";}
+
+/* ───────────────────────── decision round ───────────────────────── */
+const picked=new Set();
+function renderInvest(){
+  const list=$("invList");list.innerHTML="";
+  INVEST.forEach(iv=>{
+    const lab=document.createElement("label");lab.className="inv"+(picked.has(iv.key)?" on":"");
+    lab.innerHTML=`<input type="checkbox" ${picked.has(iv.key)?"checked":""} aria-label="${iv.name}">
+      <div style="flex:1"><div class="i-name">${iv.name}<span class="i-cost">$${iv.cost}M</span></div>
+      <div class="i-desc">${iv.desc}</div></div>`;
+    lab.querySelector("input").addEventListener("change",ev=>{
+      ev.target.checked?picked.add(iv.key):picked.delete(iv.key);renderInvest();});
+    list.appendChild(lab);
+  });
+  const spend=[...picked].reduce((s,k)=>s+INVEST.find(i=>i.key===k).cost,0);
+  $("budgetLbl").textContent=`$${spend}M / $10M`;
+  $("budgetFill").style.width=Math.min(spend/10*100,100)+"%";
+  $("budget").classList.toggle("over",spend>10);
+  $("runBtn").disabled=spend>10||spend===0;
+}
+function runStorm(){
+  const inv={};picked.forEach(k=>inv[k]=true);
+  const base=evaluate("hurricane"),after=evaluate("hurricane",inv);
+  const cmiAvoided=Math.max(base.kpi.cmi-after.kpi.cmi,0);
+  const secGain=after.kpi.secure-base.kpi.secure;
+  const hrGain=after.kpi.headroom-base.kpi.headroom;
+  const score=Math.round(cmiAvoided/1000 + secGain*120 + hrGain*15);
+  const team=($("teamName").value||"Unnamed team").trim();
+  const r=$("result");r.classList.add("show");
+  r.innerHTML=`<div class="score">${fmt(score)} <small>pts — ${team}</small></div>
+    <table>
+      <tr><td>CMI avoided</td><td>${fmt(Math.round(cmiAvoided))} cust-min</td></tr>
+      <tr><td>N-1 secure feeders</td><td>${base.kpi.secure} → ${after.kpi.secure} (+${secGain})</td></tr>
+      <tr><td>Violations remaining</td><td>${after.kpi.viol}</td></tr>
+      <tr><td>Hosting headroom gained</td><td>+${hrGain.toFixed(1)} MW</td></tr>
+      <tr><td>Customers still exposed</td><td>${fmt(after.kpi.custRisk)}</td></tr>
+    </table>`;
+  let board=[];
+  try{board=JSON.parse(localStorage.getItem("gg_board")||"[]");}catch(e){}
+  board.push({team,score,picks:[...picked]});board.sort((a,b)=>b.score-a.score);board=board.slice(0,8);
+  try{localStorage.setItem("gg_board",JSON.stringify(board));}catch(e){}
+  renderBoard(board);
+  // show the invested storm on the main dashboard
+  scenKey="hurricane";model=evaluate("hurricane",inv);
+  document.querySelectorAll(".scen").forEach(b=>b.classList.toggle("on",b.dataset.scen==="hurricane"));
+  renderAll(true);
+  $("scenHint").textContent="Hurricane replay WITH your portfolio — compare against the base storm";
+}
+function renderBoard(board){
+  if(!board){try{board=JSON.parse(localStorage.getItem("gg_board")||"[]");}catch(e){board=[];}}
+  const ol=$("board");ol.innerHTML="";
+  $("boardEmpty").style.display=board.length?"none":"block";
+  board.forEach(b=>{const li=document.createElement("li");
+    li.innerHTML=`<b>${b.team.replace(/</g,"&lt;")}</b> — <span class="pts">${fmt(b.score)} pts</span> <span style="font-size:11px;color:var(--ink-3)">(${b.picks.join(", ")||"no spend"})</span>`;
+    ol.appendChild(li);});
+}
+
+/* ───────────────────────── wiring ───────────────────────── */
+function renderAll(keepModel){
+  if(!keepModel) model=evaluate(scenKey);
+  renderMap();renderKPIs();renderLoadChart();renderHC();renderTicker();
+}
+document.querySelectorAll(".scen").forEach(b=>b.addEventListener("click",()=>{
+  scenKey=b.dataset.scen;
+  document.querySelectorAll(".scen").forEach(x=>x.classList.toggle("on",x===b));
+  renderAll();
+}));
+$("lensBtn").addEventListener("click",()=>{
+  const on=document.body.classList.toggle("lens");
+  $("lensBtn").classList.toggle("on",on);$("lensBtn").setAttribute("aria-pressed",on);
+});
+$("roundBtn").addEventListener("click",()=>{$("drawer").classList.add("open");renderInvest();renderBoard();});
+$("closeBtn").addEventListener("click",()=>$("drawer").classList.remove("open"));
+$("scrim").addEventListener("click",()=>$("drawer").classList.remove("open"));
+$("runBtn").addEventListener("click",runStorm);
+setInterval(()=>{$("clock").textContent=new Date().toLocaleTimeString("en-US",{hour12:false});},1000);
+renderAll();
+</script>
+</body>
+</html>
