@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cascade Studio</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Cascade Studio — Playing-to-Win workshop app.
+     Light-first editorial theme; dark tokens mirrored below. */
+  :root{
+    --paper:#f6f7f5; --card:#ffffff; --well:#eef0ec;
+    --ink:#171b1e; --ink-2:#525d66; --ink-3:#8a939b;
+    --line:#dfe3dd; --line-2:#c9cfc6;
+    --acc:#0e7a4d; --acc-deep:#0a5c3a; --acc-wash:#e3f0e9;
+    --gold:#a67714; --gold-wash:#f6ecd6;
+    --crit:#c23434;
+    --t1:#2a78d6; --t2:#eb6834; --t3:#1baf7a; --t4:#eda100; --t5:#e87ba4; --t6:#4a3aa7;
+    --disp:"Anton","Arial Narrow",sans-serif;
+    --body:"Libre Franklin","Segoe UI",system-ui,sans-serif;
+    --mono:"IBM Plex Mono","Consolas",monospace;
+    --shadow:0 10px 30px rgba(23,27,30,.08);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#12161a; --card:#1a2026; --well:#12171c;
+      --ink:#eef1f3; --ink-2:#a7b1ba; --ink-3:#6d7881;
+      --line:#2a323a; --line-2:#39434c;
+      --acc:#2fae77; --acc-deep:#5cc796; --acc-wash:#12291e;
+      --gold:#d8a83c; --gold-wash:#2c2410;
+      --crit:#e06060;
+      --t1:#3987e5; --t2:#d95926; --t3:#199e70; --t4:#c98500; --t5:#d55181; --t6:#9085e9;
+      --shadow:0 10px 30px rgba(0,0,0,.4);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#12161a; --card:#1a2026; --well:#12171c;
+    --ink:#eef1f3; --ink-2:#a7b1ba; --ink-3:#6d7881;
+    --line:#2a323a; --line-2:#39434c;
+    --acc:#2fae77; --acc-deep:#5cc796; --acc-wash:#12291e;
+    --gold:#d8a83c; --gold-wash:#2c2410;
+    --crit:#e06060;
+    --t1:#3987e5; --t2:#d95926; --t3:#199e70; --t4:#c98500; --t5:#d55181; --t6:#9085e9;
+    --shadow:0 10px 30px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  input,textarea{font:inherit;color:var(--ink)}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+  .app{max-width:1180px;margin:0 auto;padding:18px 20px 60px;display:flex;flex-direction:column;gap:16px}
+
+  /* header */
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .wordmark{display:flex;flex-direction:column}
+  .wordmark .big{font-family:var(--disp);font-size:30px;line-height:1;letter-spacing:.015em;text-transform:uppercase}
+  .wordmark .big em{font-style:normal;color:var(--acc)}
+  .wordmark .small{font-size:12px;color:var(--ink-2);letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
+  .head-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .phase-pill{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:6px 14px;border-radius:99px;background:var(--acc-wash);color:var(--acc-deep);border:1px solid var(--acc)}
+  .timer{font-family:var(--mono);font-size:22px;font-variant-numeric:tabular-nums;padding:4px 14px;border-radius:8px;
+    background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .timer.low{color:var(--crit);border-color:var(--crit)}
+  .conn{font-size:11px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+  .conn i{width:8px;height:8px;border-radius:50%;background:var(--ink-3);display:inline-block}
+  .conn.ok i{background:var(--acc)}
+
+  /* facilitator bar */
+  .facbar{display:none;align-items:center;gap:8px;flex-wrap:wrap;background:var(--card);border:1px solid var(--gold);
+    border-radius:10px;padding:8px 12px;box-shadow:var(--shadow)}
+  body.fac .facbar{display:flex}
+  .facbar .fb-lbl{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase}
+  .fbtn{padding:6px 12px;border-radius:7px;border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ink-2);background:var(--paper)}
+  .fbtn:hover{border-color:var(--line-2);color:var(--ink)}
+  .fbtn.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .fbtn.gold{border-color:var(--gold);color:var(--gold)}
+
+  /* generic card */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+  h2.section{font-family:var(--disp);font-size:24px;letter-spacing:.02em;text-transform:uppercase;margin:0 0 4px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);margin-bottom:6px}
+  .muted{color:var(--ink-2);font-size:13.5px}
+
+  /* join */
+  .join-grid{display:grid;grid-template-columns:minmax(280px,5fr) minmax(260px,4fr);gap:16px;align-items:start}
+  @media(max-width:860px){.join-grid{grid-template-columns:1fr}}
+  .field{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+  .field label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+  .field input{background:var(--paper);border:1px solid var(--line-2);border-radius:9px;padding:11px 14px;font-size:15px}
+  .cta{margin-top:16px;background:var(--acc);color:#fff;font-weight:700;font-size:15px;border-radius:9px;padding:12px 22px;letter-spacing:.02em}
+  .cta:hover{background:var(--acc-deep)}
+  .cta:disabled{opacity:.4;cursor:not-allowed}
+  .cta.ghost{background:none;color:var(--acc);border:1.5px solid var(--acc)}
+  .team-pick{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .tp{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;text-align:left}
+  .tp:hover{border-color:var(--line-2)}
+  .tp.on{border-color:var(--acc);background:var(--acc-wash)}
+  .tp .sw{width:14px;height:14px;border-radius:4px;flex:none}
+  .tp .who{margin-left:auto;font-size:12px;color:var(--ink-3)}
+  .cascade-preview{display:flex;flex-direction:column;gap:0;margin-top:10px}
+  .cp-step{display:flex;gap:12px;align-items:baseline;padding:9px 0;border-top:1px dashed var(--line)}
+  .cp-step:first-child{border-top:none}
+  .cp-step .n{font-family:var(--disp);font-size:20px;color:var(--acc);width:26px;flex:none;text-align:right}
+  .cp-step b{font-weight:700}
+  .cp-step span{color:var(--ink-2);font-size:13px}
+
+  /* draft */
+  .draft-grid{display:grid;grid-template-columns:minmax(300px,7fr) minmax(240px,3fr);gap:16px;align-items:start}
+  @media(max-width:900px){.draft-grid{grid-template-columns:1fr}}
+  .qcard{border-top:5px solid var(--acc);margin-bottom:14px}
+  .qcard .qhead{display:flex;align-items:baseline;gap:12px}
+  .qcard .qnum{font-family:var(--disp);font-size:34px;color:var(--acc);line-height:1}
+  .qcard h3{font-family:var(--disp);font-size:20px;text-transform:uppercase;letter-spacing:.02em;margin:0}
+  .qcard .prompt{color:var(--ink-2);font-size:13.5px;margin:6px 0 10px;max-width:64ch}
+  .qcard textarea{width:100%;min-height:84px;resize:vertical;background:var(--paper);border:1px solid var(--line-2);
+    border-radius:9px;padding:11px 13px;font-size:14.5px;line-height:1.5}
+  .qcard textarea:focus{border-color:var(--acc)}
+  .coach{border-left:3px solid var(--gold);background:var(--gold-wash);border-radius:0 9px 9px 0;
+    padding:9px 13px;font-size:12.5px;color:var(--ink-2);margin-top:9px}
+  .coach b{color:var(--gold)}
+  .savestate{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:right;margin-top:4px;height:14px}
+  .roster{position:sticky;top:14px}
+  .roster .rt{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px dashed var(--line)}
+  .roster .rt:first-of-type{border-top:none}
+  .roster .sw{width:12px;height:12px;border-radius:3px;flex:none}
+  .roster .rt b{font-weight:600;font-size:13.5px}
+  .roster .prog{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .roster .prog.done{color:var(--acc);font-weight:600}
+
+  /* present */
+  .present-wrap{display:flex;flex-direction:column;gap:14px}
+  .spot-head{display:flex;align-items:center;gap:14px}
+  .spot-head .sw{width:20px;height:20px;border-radius:6px}
+  .spot-head h2{font-family:var(--disp);font-size:34px;text-transform:uppercase;margin:0}
+  .spot-cascade{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+  .sc{border-top:5px solid var(--acc)}
+  .sc .kicker{margin-bottom:2px}
+  .sc h4{font-family:var(--disp);font-size:16px;text-transform:uppercase;margin:0 0 8px;letter-spacing:.03em}
+  .sc p{margin:0;font-size:13.5px;white-space:pre-wrap;color:var(--ink);overflow-wrap:break-word}
+  .sc p:empty::before,.sc p.blank{content:"—";color:var(--ink-3)}
+
+  /* vote */
+  .award{margin-bottom:16px}
+  .award .aw-head{display:flex;align-items:center;gap:10px}
+  .award .aw-ico{font-size:22px}
+  .award h3{font-family:var(--disp);font-size:19px;text-transform:uppercase;margin:0}
+  .award .aw-sub{color:var(--ink-2);font-size:12.5px;margin:2px 0 10px}
+  .aw-opts{display:flex;gap:8px;flex-wrap:wrap}
+  .aw-opt{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:9px;padding:8px 14px;font-weight:600;font-size:13.5px}
+  .aw-opt .sw{width:11px;height:11px;border-radius:3px}
+  .aw-opt:hover{border-color:var(--line-2)}
+  .aw-opt.on{border-color:var(--acc);background:var(--acc-wash)}
+  .aw-opt:disabled{opacity:.35;cursor:not-allowed}
+
+  /* results */
+  .podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:8px}
+  .win-card{text-align:center;border-top:5px solid var(--gold)}
+  .win-card .aw-ico{font-size:34px}
+  .win-card .aw-name{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:4px 0 8px}
+  .win-card .team{font-family:var(--disp);font-size:26px;text-transform:uppercase}
+  .win-card .cnt{font-size:12px;color:var(--ink-3);margin-top:4px}
+  .bars{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+  .bar-row{display:grid;grid-template-columns:110px 1fr 34px;align-items:center;gap:10px;font-size:13px}
+  .bar-row .bl{text-align:right;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-row .tr{display:block;height:18px;background:var(--well);border-radius:4px;overflow:hidden}
+  .bar-row .fl{display:block;height:100%;border-radius:4px;min-width:2px}
+  .bar-row .val{font-family:var(--mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+  .banner{border-left:4px solid var(--acc);background:var(--acc-wash);border-radius:0 10px 10px 0;padding:12px 16px;font-size:14px}
+  .banner.warn{border-color:var(--gold);background:var(--gold-wash)}
+  footer{color:var(--ink-3);font-size:11.5px;text-align:center}
+  footer a{color:var(--ink-2)}
+  .hidden{display:none!important}
+  dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);padding:22px;max-width:360px;box-shadow:var(--shadow)}
+  dialog::backdrop{background:rgba(10,14,10,.5)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="wordmark">
+      <div class="big">Playing to <em>Win</em></div>
+      <div class="small">Strategy Cascade Studio · EPC Southeast</div>
+    </div>
+    <div class="head-right">
+      <span class="conn" id="conn"><i></i><span id="connLbl">connecting…</span></span>
+      <span class="phase-pill" id="phasePill">LOBBY</span>
+      <span class="timer hidden" id="timer">--:--</span>
+    </div>
+  </header>
+
+  <div class="facbar" id="facbar">
+    <span class="fb-lbl">Facilitator</span>
+    <button class="fbtn" data-phase="lobby">Lobby</button>
+    <button class="fbtn" data-phase="draft">Draft</button>
+    <button class="fbtn" data-phase="present">Present</button>
+    <button class="fbtn" data-phase="vote">Vote</button>
+    <button class="fbtn" data-phase="results">Results</button>
+    <span style="width:10px"></span>
+    <button class="fbtn gold" data-mins="15">⏱ 15:00</button>
+    <button class="fbtn gold" data-mins="5">⏱ 5:00</button>
+    <button class="fbtn gold" data-mins="0">⏱ clear</button>
+    <span id="spotCtl" style="display:flex;gap:6px;align-items:center"></span>
+  </div>
+
+  <main id="main"></main>
+
+  <footer>Cascade framework after Lafley &amp; Martin, <i>Playing to Win</i> (2013) · workshop tool, synthetic session data</footer>
+</div>
+
+<script>
+"use strict";
+/* ════════════════ storage adapters ════════════════
+   One frontend, three backends:
+   1. Claude Artifact db  — realtime, shared across viewers of the artifact
+   2. Node server (server.js) — /api JSON store for self-hosted rooms
+   3. localStorage — solo rehearsal fallback                                */
+function mkClaudeAdapter(db){
+  return {
+    label:"live · artifact db",
+    getDoc:async p=>{const s=await db.doc(p).get();return s.exists?s.data():null;},
+    setDoc:(p,d)=>db.doc(p).set(d),
+    updateDoc:async(p,d)=>{try{await db.doc(p).update(d);}catch(e){await db.doc(p).set(d);}},
+    listCol:async p=>{const s=await db.collection(p).get();return s.docs.map(d=>({id:d.id,...d.data()}));},
+    watchDoc:(p,cb)=>db.doc(p).onSnapshot(s=>cb(s.exists?s.data():null),()=>{}),
+    watchCol:(p,cb)=>db.collection(p).onSnapshot(s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{}),
+  };
+}
+function mkHttpAdapter(){
+  const j=async(url,opt)=>{const r=await fetch(url,opt);if(!r.ok)throw new Error(r.status);return r.json();};
+  const enc=encodeURIComponent, watchers=[];
+  setInterval(()=>watchers.forEach(w=>w()),2500);
+  return {
+    label:"live · workshop server",
+    getDoc:p=>j("/api/doc?path="+enc(p)).then(r=>r.data),
+    setDoc:(p,d)=>j("/api/doc?path="+enc(p),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}),
+    updateDoc:(p,d)=>j("/api/doc?path="+enc(p),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}),
+    listCol:p=>j("/api/col?path="+enc(p)).then(r=>r.docs),
+    watchDoc(p,cb){let last;const t=async()=>{try{const d=await this.getDoc(p),s=JSON.stringify(d);
+      if(s!==last){last=s;cb(d);}}catch(e){}};t();watchers.push(t);return()=>{};},
+    watchCol(p,cb){let last;const t=async()=>{try{const d=await this.listCol(p),s=JSON.stringify(d);
+      if(s!==last){last=s;cb(d);}}catch(e){}};t();watchers.push(t);return()=>{};},
+  };
+}
+function mkLocalAdapter(){
+  const KEY="ptw_solo";let store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||"{}");}catch(e){}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}};
+  const watchers=[];const notify=()=>watchers.forEach(w=>w());
+  const merge=(a,b)=>{for(const k in b){if(b[k]&&typeof b[k]==="object"&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==="object")merge(a[k],b[k]);else a[k]=b[k];}};
+  return {
+    label:"solo rehearsal · this browser only",
+    getDoc:async p=>store[p]||null,
+    setDoc:async(p,d)=>{store[p]=JSON.parse(JSON.stringify(d));save();notify();},
+    updateDoc:async(p,d)=>{store[p]=store[p]||{};merge(store[p],JSON.parse(JSON.stringify(d)));save();notify();},
+    listCol:async p=>Object.keys(store).filter(k=>k.startsWith(p+"/")&&k.split("/").length===p.split("/").length+1)
+      .map(k=>({id:k.split("/").pop(),...store[k]})),
+    watchDoc(p,cb){const t=()=>cb(store[p]||null);t();watchers.push(t);return()=>{};},
+    watchCol(p,cb){const t=async()=>cb(await this.listCol(p));t();watchers.push(t);return()=>{};},
+  };
+}
+
+/* ════════════════ constants ════════════════ */
+const STEPS=[
+ {key:"aspiration",title:"Winning Aspiration",
+  prompt:"What does winning look like for this business line — stated as an outcome for the client and the market, not a revenue target?",
+  coach:"Aspirations about “being the best” that any competitor could also write aren’t choices yet. Name who wins what, where.",
+  ph:"e.g. Be the firm Southeast munis call first when the grid decision can’t wait…"},
+ {key:"where",title:"Where to Play",
+  prompt:"Which segments, geographies, buyers, channels? Just as important: where will you explicitly NOT play?",
+  coach:"A real choice has a sensible opposite. If no sane competitor would pick the territory you excluded, you haven’t chosen anything.",
+  ph:"e.g. Co-ops & munis 15–200k meters in hurricane states; NOT IOU transmission programs…"},
+ {key:"how",title:"How to Win",
+  prompt:"On that playing field, what is the value proposition and the competitive advantage that makes you the repeated winner?",
+  coach:"“How to win” must be specific to your “where.” An advantage that works everywhere usually wins nowhere in particular.",
+  ph:"e.g. Planning-grade answers at operations tempo — we already maintain the client’s network model…"},
+ {key:"capabilities",title:"Must-Have Capabilities",
+  prompt:"Which 2–3 reinforcing capabilities do the choices above demand? For each: build, buy, or partner?",
+  coach:"Capabilities must form a system that reinforces itself — a list of strengths is not a system.",
+  ph:"e.g. Model-onboarding factory (build); hosting-capacity method (build); cloud ops (partner)…"},
+ {key:"systems",title:"Management Systems",
+  prompt:"What structures, measures, and reviews keep the cascade honest? What do you track weekly, and who kills what isn’t working?",
+  coach:"If nothing in your calendar or dashboards would change on Monday, the strategy is a poster, not a system.",
+  ph:"e.g. Weekly win/loss vs. two named alternative futures; a feature that moves no metric is cut…"},
+];
+const AWARDS=[
+ {key:"clarity",  ico:"🎯", name:"Sharpest Where-to-Play", sub:"The team that chose a playing field — and had the nerve to name what they walked away from."},
+ {key:"boldness", ico:"⚡", name:"Boldest How-to-Win",     sub:"The advantage a bigger competitor genuinely couldn’t copy in 18 months."},
+ {key:"coherence",ico:"🔗", name:"Most Coherent Cascade",  sub:"Five answers that read as one argument — each choice forcing the next."},
+];
+const TEAM_COLORS=["t1","t2","t3","t4","t5","t6"];
+const PHASES={lobby:"Lobby — form teams",draft:"Draft — build your cascade",present:"Present — spotlight",vote:"Vote — the awards",results:"Results"};
+const FAC_PIN_DEFAULT="coach";
+
+/* ════════════════ state ════════════════ */
+let A=null;                       // adapter
+let me={id:null,name:"",teamId:null,fac:false};
+let W=null;                       // workshop/state doc
+let TEAMS=[];                     // teams collection
+let VOTES=[];                     // votes collection
+let joined=false, saveTimers={}, lastLocalEdit={};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+try{me.id=localStorage.getItem("ptw_uid");}catch(e){}
+if(!me.id){me.id="u"+Math.random().toString(36).slice(2,10);try{localStorage.setItem("ptw_uid",me.id);}catch(e){}}
+try{const s=JSON.parse(localStorage.getItem("ptw_me")||"{}");me.name=s.name||"";me.teamId=s.teamId||null;me.fac=!!s.fac;}catch(e){}
+const remember=()=>{try{localStorage.setItem("ptw_me",JSON.stringify({name:me.name,teamId:me.teamId,fac:me.fac}));}catch(e){}};
+
+/* ════════════════ boot ════════════════ */
+(async function boot(){
+  render(); // page renders before any backend answers
+  if(window.claude&&typeof claude.use==="function"){
+    const db=await claude.use("db");
+    if(db) A=mkClaudeAdapter(db);
+  }
+  if(!A){
+    try{const r=await fetch("/api/ping");if(r.ok)A=mkHttpAdapter();}catch(e){}
+  }
+  if(!A) A=mkLocalAdapter();
+  $("conn").classList.add("ok");$("connLbl").textContent=A.label;
+  let w=await A.getDoc("workshop/state");
+  if(!w){w={phase:"lobby",pin:FAC_PIN_DEFAULT,timerEnd:0,spotlight:null,createdAt:Date.now()};
+    await A.setDoc("workshop/state",w);}
+  A.watchDoc("workshop/state",d=>{W=d;render();});
+  A.watchCol("teams",d=>{TEAMS=d.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));render();});
+  A.watchCol("votes",d=>{VOTES=d;render();});
+})();
+
+/* ════════════════ actions ════════════════ */
+async function createTeam(name){
+  const idx=TEAMS.length%TEAM_COLORS.length;
+  const id="team"+Math.random().toString(36).slice(2,8);
+  await A.setDoc("teams/"+id,{name,color:TEAM_COLORS[idx],createdAt:Date.now(),
+    members:{[me.id]:me.name},cascade:{aspiration:"",where:"",how:"",capabilities:"",systems:""}});
+  me.teamId=id;joined=true;remember();
+}
+async function joinTeam(id){
+  await A.updateDoc("teams/"+id,{members:{[me.id]:me.name}});
+  me.teamId=id;joined=true;remember();
+}
+function saveField(key,val){
+  lastLocalEdit[key]=Date.now();
+  clearTimeout(saveTimers[key]);
+  const st=$("save-"+key);if(st)st.textContent="…";
+  saveTimers[key]=setTimeout(async()=>{
+    await A.updateDoc("teams/"+me.teamId,{cascade:{[key]:val},updatedAt:Date.now()});
+    const st2=$("save-"+key);if(st2)st2.textContent="saved ✓";
+  },700);
+}
+async function setPhase(p){await A.updateDoc("workshop/state",{phase:p,
+  timerEnd:p==="draft"?Date.now()+15*60*1000:0,
+  spotlight:p==="present"?(TEAMS[0]&&TEAMS[0].id||null):null});}
+async function setTimer(mins){await A.updateDoc("workshop/state",{timerEnd:mins>0?Date.now()+mins*60*1000:0});}
+async function setSpotlight(id){await A.updateDoc("workshop/state",{spotlight:id});}
+let myVote=null; // local source of truth: successive casts must not merge from a stale poll
+async function castVote(cat,teamId){
+  if(!myVote){const {id,...m}=VOTES.find(v=>v.id===me.id)||{};myVote=m;}
+  myVote={...myVote,name:me.name,[cat]:teamId};
+  await A.setDoc("votes/"+me.id,{...myVote});
+  render();
+}
+
+/* ════════════════ render ════════════════ */
+function teamColor(t){return `var(--${t.color||"t1"})`;}
+function myTeam(){return TEAMS.find(t=>t.id===me.teamId);}
+function doneCount(t){return STEPS.filter(s=>(t.cascade&&t.cascade[s.key]||"").trim().length>10).length;}
+
+function render(){
+  const phase=W?W.phase:"lobby";
+  $("phasePill").textContent=(PHASES[phase]||phase).toUpperCase();
+  document.body.classList.toggle("fac",me.fac);
+  document.querySelectorAll(".facbar [data-phase]").forEach(b=>b.classList.toggle("on",b.dataset.phase===phase));
+  renderTimer();renderSpotCtl(phase);
+  const m=$("main");
+  if(!joined&&!(me.name&&me.teamId&&TEAMS.some(t=>t.id===me.teamId))&&!me.fac){renderJoin(m);return;}
+  if(me.name&&me.teamId&&TEAMS.some(t=>t.id===me.teamId))joined=true;
+  if(phase==="lobby")renderLobby(m);
+  else if(phase==="draft")renderDraft(m);
+  else if(phase==="present")renderPresent(m);
+  else if(phase==="vote")renderVote(m);
+  else renderResults(m);
+}
+
+function renderTimer(){
+  const t=$("timer");
+  if(!W||!W.timerEnd||W.timerEnd<Date.now()){t.classList.add("hidden");return;}
+  t.classList.remove("hidden");
+  const s=Math.max(0,Math.floor((W.timerEnd-Date.now())/1000));
+  t.textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+  t.classList.toggle("low",s<60);
+}
+setInterval(renderTimer,1000);
+
+function renderSpotCtl(phase){
+  const c=$("spotCtl");c.innerHTML="";
+  if(!me.fac||phase!=="present")return;
+  c.innerHTML='<span class="fb-lbl">Spotlight</span>';
+  TEAMS.forEach(t=>{
+    const b=document.createElement("button");b.className="fbtn"+(W&&W.spotlight===t.id?" on":"");
+    b.textContent=t.name;b.onclick=()=>setSpotlight(t.id);c.appendChild(b);});
+}
+
+/* — join — */
+function renderJoin(m){
+  m.innerHTML=`
+  <div class="join-grid">
+    <div class="card">
+      <div class="kicker">Join the session</div>
+      <h2 class="section">Pick your side</h2>
+      <p class="muted">One strategy cascade per table. You'll draft it together, defend it in the spotlight, and be judged by the room.</p>
+      <div class="field"><label for="jName">Your name</label>
+        <input id="jName" maxlength="24" placeholder="First name is fine" value="${esc(me.name)}"></div>
+      <div class="team-pick" id="teamPick"></div>
+      <div class="field"><label for="jTeam">…or start a new team</label>
+        <input id="jTeam" maxlength="26" placeholder="e.g. SE Grid Mod PDMs"></div>
+      <button class="cta" id="jGo">Enter the workshop</button>
+      <button class="cta ghost" id="jFac" style="margin-left:8px">Facilitator</button>
+    </div>
+    <div class="card">
+      <div class="kicker">The five choices</div>
+      <h2 class="section">One cascade</h2>
+      <p class="muted">Strategy is an integrated set of five choices — each one narrowing the next.</p>
+      <div class="cascade-preview">
+        ${STEPS.map((s,i)=>`<div class="cp-step"><span class="n">${i+1}</span><div><b>${s.title}</b><br><span>${esc(s.prompt)}</span></div></div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+  const pick=$("teamPick");let chosen=null;
+  if(TEAMS.length){
+    pick.innerHTML='<div class="field"><label>Join an existing team</label></div>';
+    TEAMS.forEach(t=>{
+      const b=document.createElement("button");b.className="tp";b.type="button";
+      b.innerHTML=`<span class="sw" style="background:${teamColor(t)}"></span>${esc(t.name)}
+        <span class="who">${Object.values(t.members||{}).map(esc).join(", ")||"empty"}</span>`;
+      b.onclick=()=>{chosen=t.id;$("jTeam").value="";pick.querySelectorAll(".tp").forEach(x=>x.classList.toggle("on",x===b));};
+      pick.appendChild(b);});
+  }
+  $("jGo").onclick=async()=>{
+    const n=$("jName").value.trim();if(!n)return $("jName").focus();
+    me.name=n;remember();
+    const newT=$("jTeam").value.trim();
+    if(newT)await createTeam(newT);
+    else if(chosen)await joinTeam(chosen);
+    else return $("jTeam").focus();
+    render();
+  };
+  $("jFac").onclick=async()=>{
+    const pin=prompt("Facilitator PIN");
+    if(pin!==null&&W&&pin===(W.pin||FAC_PIN_DEFAULT)){me.fac=true;me.name=me.name||"Facilitator";joined=true;remember();render();}
+    else if(pin!==null)alert("Wrong PIN. Default is “"+FAC_PIN_DEFAULT+"” — set in workshop/state.");
+  };
+}
+
+/* — lobby — */
+function renderLobby(m){
+  m.innerHTML=`
+  <div class="card">
+    <div class="kicker">Lobby</div>
+    <h2 class="section">Teams forming</h2>
+    <p class="muted">${me.fac?"Start <b>Draft</b> when the tables are set. Drafting opens with a 15-minute clock.":"Waiting for the facilitator to open the draft."}</p>
+    <div class="roster" style="margin-top:10px">
+      ${TEAMS.length?TEAMS.map(t=>`<div class="rt"><span class="sw" style="background:${teamColor(t)}"></span>
+        <b>${esc(t.name)}</b><span class="muted" style="font-size:12px">&nbsp;${Object.values(t.members||{}).map(esc).join(", ")}</span></div>`).join("")
+      :'<p class="muted">No teams yet.</p>'}
+    </div>
+  </div>`;
+}
+
+/* — draft — */
+function renderDraft(m){
+  const t=myTeam();
+  if(!t){ // facilitator (or spectator) view: progress board
+    m.innerHTML=`<div class="card"><div class="kicker">Draft in progress</div><h2 class="section">Progress</h2>
+    <div class="roster" style="margin-top:8px">${TEAMS.map(tm=>{const d=doneCount(tm);
+      return `<div class="rt"><span class="sw" style="background:${teamColor(tm)}"></span><b>${esc(tm.name)}</b>
+      <span class="prog ${d===5?"done":""}">${d}/5 ${d===5?"✓ complete":""}</span></div>`;}).join("")||'<p class="muted">No teams.</p>'}</div></div>`;
+    return;
+  }
+  // Build once per entry; afterwards only patch non-focused fields so typing never loses focus.
+  if(!m.querySelector("#draftRoot")){
+    m.innerHTML=`<div class="draft-grid" id="draftRoot">
+      <div>
+        ${STEPS.map((s,i)=>`<div class="card qcard">
+          <div class="qhead"><span class="qnum">${i+1}</span><h3>${s.title}</h3></div>
+          <p class="prompt">${esc(s.prompt)}</p>
+          <textarea id="f-${s.key}" placeholder="${esc(s.ph)}"></textarea>
+          <div class="coach"><b>Coach:</b> ${esc(s.coach)}</div>
+          <div class="savestate" id="save-${s.key}"></div>
+        </div>`).join("")}
+      </div>
+      <div class="card roster">
+        <div class="kicker">Your team</div>
+        <h2 class="section" style="font-size:19px" id="rTeamName"></h2>
+        <div id="rBody"></div>
+      </div>
+    </div>`;
+    STEPS.forEach(s=>{
+      const ta=$("f-"+s.key);
+      ta.value=(t.cascade&&t.cascade[s.key])||"";
+      ta.addEventListener("input",()=>saveField(s.key,ta.value));
+    });
+  }
+  // patch remote values into fields not being edited
+  STEPS.forEach(s=>{
+    const ta=$("f-"+s.key);if(!ta)return;
+    const remote=(t.cascade&&t.cascade[s.key])||"";
+    const editing=document.activeElement===ta||((Date.now()-(lastLocalEdit[s.key]||0))<2000);
+    if(!editing&&ta.value!==remote)ta.value=remote;
+  });
+  $("rTeamName").textContent=t.name;
+  $("rBody").innerHTML=`
+    ${Object.values(t.members||{}).map(n=>`<div class="rt"><b>${esc(n)}</b></div>`).join("")}
+    <div style="margin-top:12px" class="kicker">Room progress</div>
+    ${TEAMS.map(tm=>{const d=doneCount(tm);
+      return `<div class="rt"><span class="sw" style="background:${teamColor(tm)}"></span><b>${esc(tm.name)}</b>
+      <span class="prog ${d===5?"done":""}">${d}/5</span></div>`;}).join("")}`;
+}
+
+/* — present — */
+function renderPresent(m){
+  const t=TEAMS.find(x=>x.id===(W&&W.spotlight))||TEAMS[0];
+  if(!t){m.innerHTML='<div class="card"><p class="muted">No teams to present.</p></div>';return;}
+  m.innerHTML=`<div class="present-wrap">
+    <div class="spot-head"><span class="sw" style="background:${teamColor(t)}"></span>
+      <h2>${esc(t.name)}</h2><span class="muted">${Object.values(t.members||{}).map(esc).join(" · ")}</span></div>
+    <div class="spot-cascade">
+      ${STEPS.map((s,i)=>`<div class="card sc"><div class="kicker">${i+1} · ${s.title}</div>
+        <p${(t.cascade&&t.cascade[s.key]||"").trim()?"":' class="blank"'}>${esc(t.cascade&&t.cascade[s.key]||"")||"—"}</p></div>`).join("")}
+    </div>
+    ${me.fac?'<div class="banner">Challenge from the room, then next spotlight. Ask: <b>what did this team choose NOT to do?</b></div>':""}
+  </div>`;
+}
+
+/* — vote — */
+function renderVote(m){
+  const mine=myVote||VOTES.find(v=>v.id===me.id)||{};
+  const eligible=TEAMS.filter(t=>t.id!==me.teamId);
+  m.innerHTML=`<div class="card">
+    <div class="kicker">The awards</div>
+    <h2 class="section">Cast your votes</h2>
+    <p class="muted">One vote per award. Your own team is off the ballot${me.fac?" (facilitator votes count too)":""}.</p>
+    ${AWARDS.map(a=>`<div class="award">
+      <div class="aw-head"><span class="aw-ico">${a.ico}</span><h3>${a.name}</h3></div>
+      <p class="aw-sub">${a.sub}</p>
+      <div class="aw-opts">${(me.fac?TEAMS:eligible).map(t=>
+        `<button class="aw-opt ${mine[a.key]===t.id?"on":""}" data-cat="${a.key}" data-team="${t.id}">
+        <span class="sw" style="background:${teamColor(t)}"></span>${esc(t.name)}</button>`).join("")||'<span class="muted">No other teams.</span>'}</div>
+    </div>`).join("")}
+    <p class="muted" id="voteMsg">${["clarity","boldness","coherence"].every(k=>mine[k])?"All three cast — watch the big screen.":""}</p>
+  </div>`;
+  m.querySelectorAll(".aw-opt").forEach(b=>b.onclick=()=>castVote(b.dataset.cat,b.dataset.team));
+}
+
+/* — results — */
+function renderResults(m){
+  const tally=cat=>{const c={};VOTES.forEach(v=>{if(v[cat])c[v[cat]]=(c[v[cat]]||0)+1;});return c;};
+  m.innerHTML=`<div class="card">
+    <div class="kicker">Results</div>
+    <h2 class="section">And the room says…</h2>
+    <div class="podium">${AWARDS.map(a=>{
+      const c=tally(a.key);const win=Object.entries(c).sort((x,y)=>y[1]-x[1])[0];
+      const t=win&&TEAMS.find(x=>x.id===win[0]);
+      return `<div class="card win-card"><div class="aw-ico">${a.ico}</div>
+        <div class="aw-name">${a.name}</div>
+        <div class="team" style="color:${t?teamColor(t):"var(--ink-3)"}">${t?esc(t.name):"—"}</div>
+        <div class="cnt">${win?win[1]+" vote"+(win[1]>1?"s":""):"no votes yet"}</div></div>`;}).join("")}
+    </div>
+    ${AWARDS.map(a=>{const c=tally(a.key);const max=Math.max(1,...Object.values(c));
+      return `<div style="margin-top:14px"><div class="kicker">${a.ico} ${a.name}</div><div class="bars">
+      ${TEAMS.map(t=>`<div class="bar-row"><span class="bl">${esc(t.name)}</span>
+        <span class="tr"><span class="fl" style="width:${(c[t.id]||0)/max*100}%;background:${teamColor(t)}"></span></span>
+        <span class="val">${c[t.id]||0}</span></div>`).join("")}</div></div>`;}).join("")}
+    <div class="banner" style="margin-top:18px">Debrief: every award argument you just had was a <b>Playing-to-Win</b> argument. Take your cascade home — it's version 0.1, not a poster.</div>
+  </div>`;
+}
+
+/* facilitator bar wiring */
+document.querySelectorAll(".facbar [data-phase]").forEach(b=>b.onclick=()=>setPhase(b.dataset.phase));
+document.querySelectorAll(".facbar [data-mins]").forEach(b=>b.onclick=()=>setTimer(+b.dataset.mins));
+</script>
+</body>
+</html>
